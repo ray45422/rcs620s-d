@@ -1,7 +1,7 @@
 import std.stdio;
 import core.thread;
 import serial.device;
-import serial.rcs620s;
+import nfc.device.rcs620s;
 void main()
 {
 	auto rcs620s = new RCS620S("/dev/ttyUSB0");

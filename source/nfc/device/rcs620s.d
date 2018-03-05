@@ -1,4 +1,4 @@
-module serial.rcs620s;
+module nfc.device.rcs620s;
 import std.stdio;
 import std.array;
 import std.conv;
