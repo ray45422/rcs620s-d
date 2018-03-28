@@ -80,7 +80,7 @@ private:
 	const uint RCS620S_MAX_CARD_RESPONSE_LEN = 254;
 	const uint RCS620S_MAX_RW_RESPONSE_LEN = 265;
 	SerialPort port;
-	ubyte[] rwCommand(ubyte[] command){
+	public ubyte[] rwCommand(ubyte[] command){
 		ubyte[] buf;
 		ubyte dcs;
 		ubyte[] response;
