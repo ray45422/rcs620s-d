@@ -4,8 +4,9 @@ import std.array;
 import std.conv;
 import core.thread;
 import serial.device;
+import nfc.device;
 
-class RCS620S{
+class RCS620S: Device{
 public:
 	ubyte[8] idm;
 	ubyte[8] pmm;
