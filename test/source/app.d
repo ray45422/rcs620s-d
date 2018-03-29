@@ -5,72 +5,6 @@ import core.thread;
 import serial.device;
 import nfc.device.rcs620s;
 RCS620S rcs620s;
-struct ServiceAttribute{
-	this(ubyte attr){
-		_attr = attr;
-	}
-	@property
-	ubyte attr(){
-		return _attr;
-	}
-	string toString(){
-		if(_attr > 7 && _attr < 24){
-			return ServiceAttributeString[_attr];
-		}
-		return "";
-	}
-	T opCast(T)()if(isIntegral!T){
-		return _attr;
-	}
-	T opCast(T)()if(isSomeString!T){
-		return toString;
-	}
-	bool opEquals(ServiceAttribute val){
-		return val.attr == _attr;
-	}
-	import std.traits;
-	bool opEquals(T)(T val)if(isIntegral!T){
-		return _attr == val;
-	}
-private:
-	ubyte _attr;
-}
-enum ServiceAttributes{
-	RANDOM_RW_AUTH      = ServiceAttribute(0b001000),
-	RANDOM_RW_NOAUTH    = ServiceAttribute(0b001001),
-	RANDOM_R_AUTH       = ServiceAttribute(0b001010),
-	RANDOM_R_NOAUTH     = ServiceAttribute(0b001011),
-	CYCLIC_RW_AUTH      = ServiceAttribute(0b001100),
-	CYCLIC_RW_NOAUTH    = ServiceAttribute(0b001101),
-	CYCLIC_R_AUTH       = ServiceAttribute(0b001110),
-	CYCLIC_R_NOAUTH     = ServiceAttribute(0b001111),
-	PARSE_DIRECT_AUTH   = ServiceAttribute(0b010000),
-	PARSE_DIRECT_NOAUTH = ServiceAttribute(0b010001),
-	PARSE_CBDE_AUTH     = ServiceAttribute(0b010010),
-	PARSE_CBDE_NOAUTH   = ServiceAttribute(0b010011),
-	PARSE_DE_AUTH       = ServiceAttribute(0b010100),
-	PARSE_DE_NOAUTH     = ServiceAttribute(0b010101),
-	PARSE_R_AUTH        = ServiceAttribute(0b010110),
-	PARSE_R_NOAUTH      = ServiceAttribute(0b010111),
-}
-immutable string[] ServiceAttributeString = [
-	0b001000: "Random Service Read/Write: Authentication Required",
-	0b001001: "Random Service Read/Write: No Authentication Required",
-	0b001010: "Random Service Read only : Authentication Required",
-	0b001011: "Random Service Read only : No Authentication Required",
-	0b001100: "Cyclic Service Read/Write: Authentication Required",
-	0b001101: "Cyclic Service Read/Write: No Authentication Required",
-	0b001110: "Cyclic Service Read only : No Authentication Required",
-	0b001111: "Cyclic Service Read only : No Authentication Required",
-	0b010000: "Parse Service  Direct    : Authentication Required",
-	0b010001: "Parse Service  Direct    : No Authentication Required",
-	0b010010: "Parse Service  CB/DE     : Authentication Required",
-	0b010011: "Parse Service  CB/DE     : Authentication Required",
-	0b010100: "Parse Service  Decrement : Authentication Required",
-	0b010101: "Parse Service  Decrement : No Authentication Required",
-	0b010110: "Parse Service  Read only : Authentication Required",
-	0b010111: "Parse Service  Read only : Authentication Required",
-];
 void print(ubyte[] data){
 	rcs620s.writeArray(data);
 }
@@ -105,6 +39,9 @@ ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
 		data ~= node;
 	}
 	auto rcv = rcs620s.cardCommand(data);
+	if(rcv.length == 0){
+		return null;
+	}
 	if(rcv[0] != 0x03){
 		"not response".writeln;
 		return null;
@@ -289,29 +226,29 @@ void main()
 				rcs620s.polling(count, speed, systemCode, requestCode).polPrint;
 				break;
 			case "scanSrv":
+				import nfc.tag.felica.service;
 				ubyte[][] nodes;
-				for(uint i = 0; i < 0b1111111111; ++i){
-					for(uint attr = 8; attr < 24; ++attr){
+				for(ushort i = 0; i < 0b1111111111; ++i){
+					for(ubyte attr = 8; attr < 24; ++attr){
 						if(attr % 2 == 0){
 							continue;
 						}
 						ubyte[] d;
-						d ~= (((i << 6) & 0xff) | attr).to!ubyte;
-						d ~= ((i >> 2) & 0xff).to!ubyte;
-						nodes ~= d;
+						auto service = Service(i, attributeValueOf(attr));
+						nodes ~= service.pack;
 					}
 					auto rcv = requestService(lastTag.idm, nodes);
 					foreach(j, keyVer; rcv){
 						if(keyVer == [0xff, 0xff]){
 							continue;
 						}
-						auto srvAttr = ServiceAttribute(nodes[j][0] & 0b111111);
+						auto service = Service(nodes[j]);
 						"[node:".write;
 						writef("[%02x, %02x]", nodes[j][1], nodes[j][0]);
 						", serviceCode:".write;
 						i.write;
 						", ".write;
-						srvAttr.write;
+						service.serviceAttribute.toString.write;
 						", keyVer:".write;
 						writef("[%02x, %02x]", keyVer[0], keyVer[1]);
 						"]".writeln;

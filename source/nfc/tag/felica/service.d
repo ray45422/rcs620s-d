@@ -4,9 +4,16 @@ struct Service{
 		srvNum = sn;
 		srvAttr = sa;
 	}
+	this(ubyte[] service){
+		if(service.length == 2){
+			unpack(service[1] << 8 | service[0]);
+		}else{
+			srvNum = 0;
+			srvAttr = ServiceAttribute.INVALIDE_SERVICE;
+		}
+	}
 	this(ushort service){
-		srvNum = (service >> 6) & 0b1111111111;
-		srvAttr = attributeValueOf(service & 0b111111);
+		unpack(service);
 	}
 	ubyte[] pack(){
 		ubyte[] service = new ubyte[2];
@@ -25,17 +32,21 @@ struct Service{
 private:
 	ushort srvNum;
 	ServiceAttribute srvAttr;
+	void unpack(ushort service){
+		srvNum = (service >> 6) & 0b1111111111;
+		srvAttr = attributeValueOf(service & 0b111111);
+	}
 }
 
 ServiceAttribute attributeValueOf(ubyte value){
 	if(value >= 0b001000 && value <= 0b010111){
 		return AttrResolvTable[value];
 	}
-	return ServiceAttribute.NO_SERVICE;
+	return ServiceAttribute.INVALIDE_SERVICE;
 }
 
 enum ServiceAttribute: _ServiceAttribute{
-	NO_SERVICE          = _ServiceAttribute(0b000000),
+	INVALIDE_SERVICE          = _ServiceAttribute(0b000000),
 	RANDOM_RW_AUTH      = _ServiceAttribute(0b001000),
 	RANDOM_RW_NOAUTH    = _ServiceAttribute(0b001001),
 	RANDOM_R_AUTH       = _ServiceAttribute(0b001010),
@@ -54,7 +65,7 @@ enum ServiceAttribute: _ServiceAttribute{
 	PARSE_R_NOAUTH      = _ServiceAttribute(0b010111),
 }
 private immutable ServiceAttribute[] AttrResolvTable = [
-	0b000000: ServiceAttribute.NO_SERVICE,
+	0b000000: ServiceAttribute.INVALIDE_SERVICE,
 	0b001000: ServiceAttribute.RANDOM_RW_AUTH,
 	0b001001: ServiceAttribute.RANDOM_RW_NOAUTH,
 	0b001010: ServiceAttribute.RANDOM_R_AUTH,
@@ -133,6 +144,6 @@ unittest{
 
 	assert(attributeValueOf(0b001000) == ServiceAttribute.RANDOM_RW_AUTH);
 	assert(attributeValueOf(0b001100) == ServiceAttribute.CYCLIC_RW_AUTH);
-	assert(attributeValueOf(0b000000) == ServiceAttribute.NO_SERVICE);
-	assert(attributeValueOf(0b100000) == ServiceAttribute.NO_SERVICE);
+	assert(attributeValueOf(0b000000) == ServiceAttribute.INVALIDE_SERVICE);
+	assert(attributeValueOf(0b100000) == ServiceAttribute.INVALIDE_SERVICE);
 }
