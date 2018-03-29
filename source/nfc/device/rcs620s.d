@@ -5,6 +5,7 @@ import std.conv;
 import core.thread;
 import serial.device;
 import nfc.device;
+import nfc.tag.felica;
 
 class RCS620S: Device{
 public:
@@ -19,25 +20,45 @@ public:
 		this.port.speed(BaudRate.BR_115200);
 		this.timeout = RCS620S_DEFAULT_TIMEOUT;
 	}
-	bool init(){
-		ubyte[] ret;
-
-		/* RFConfiguration (various timings) */
-		ret = rwCommand([0xd4, 0x32, 0x02, 0x00, 0x00, 0x00]);
-		if(ret.length == 0 || ret.length !=2 || !cmp(ret, [0xd5, 0x33], 2)){
-			return false;
+	bool getFirmwareVersion(){
+		ubyte[] data = [0xd4, 0x02];
+		auto rcv = rwCommand(data);
+		if(rcv == [0xd5, 0x03, 0x33, 0x01, 0x30, 0x07]){
+			return true;
 		}
-		/* RFConfiguration (max retries) */
-		ret = rwCommand([0xd4, 0x32, 0x05, 0x00, 0x00, 0x00]);
-		if(ret.length == 0 || ret.length !=2 || !cmp(ret, [0xd5, 0x33], 2)){
-			return false;
+		return false;
+	}
+	FeliCa[] polling(ubyte count = 0x01, ubyte speed = 0x01, uint systemCode = 0xffff, ubyte requestCode = 0x00){
+		import std.stdio;
+		ubyte[] data = [0xd4, 0x4a, count, speed, 0x00, 0xff, 0xff, requestCode, 0x00];
+		data[5] = (systemCode >> 8) & 0xff;
+		data[6] = systemCode & 0xff;
+		if(data[2] != 1){
+			data[8] = 0x0f;
 		}
-		/* RFConfiguration (additional wait time = 24ms) */
-		ret = rwCommand([0xd4, 0x32, 0x81, 0xb7]);
-		if(ret.length == 0 || ret.length !=2 || !cmp(ret, [0xd5, 0x33], 2)){
-			return false;
+		FeliCa[] tags;
+		auto rcv = rwCommand(data);
+		if(rcv.length <= 3){
+			return tags;
 		}
-		return true;
+		if(rcv[0..2] != [0xd5, 0x4b]){
+			return tags;
+		}
+		auto tagCount = rcv[2];
+		rcv = rcv[3..$];
+		for(int i = 0; i < tagCount; ++i){
+			auto len = rcv[1];
+			auto felica = FeliCa.factory(rcv[3..11], rcv[11..19]);
+			if(requestCode == 1){
+				felica.setSystemCode(rcv[19..21]);
+			}
+			if(requestCode == 2){
+				felica.setCommunicationSpec(rcv[19..21]);
+			}
+			tags ~= felica;
+			rcv = rcv[(len+1)..$];
+		}
+		return tags;
 	}
 	bool polling(uint systemCode = 0xffff){
 		ubyte[] response;
@@ -69,21 +90,8 @@ public:
 	/*TODO テストコードからの移植
 	  エラーチェックなど追加
 	*/
-	ubyte[] polling(ubyte count = 0x01, ubyte speed = 0x01, uint systemCode = 0xffff, ubyte requestCode = 0x00){
-		ubyte[] data = [0xd4, 0x4a, count, speed, 0x00, 0xff, 0xff, requestCode, 0x00];
-		data[5] = (systemCode >> 8) & 0xff;
-		data[6] = systemCode & 0xff;
-		if(data[2] != 1){
-			data[8] = 0x0f;
-		}
-		return rwCommand(data);
-	}
 	ubyte[] rfOn(){
 		ubyte[] data = [0xd4, 0x32, 0x01, 0x01];
-		return rwCommand(data);
-	}
-	ubyte[] getFirmwareVersion(){
-		ubyte[] data = [0xd4, 0x02];
 		return rwCommand(data);
 	}
 	ubyte[] getStatus(){

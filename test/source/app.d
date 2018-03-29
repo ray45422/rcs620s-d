@@ -4,6 +4,7 @@ import std.conv;
 import core.thread;
 import serial.device;
 import nfc.device.rcs620s;
+import nfc.tag.felica;
 RCS620S rcs620s;
 void print(ubyte[] data){
 	rcs620s.writeArray(data);
@@ -11,24 +12,6 @@ void print(ubyte[] data){
 void nodePrint(ubyte[][] data){
 	foreach(d; data){
 		rcs620s.writeArray(d);
-	}
-}
-void polPrint(ubyte[] data){
-	data.print;
-	if(data.length <= 2){
-		"not enough length".writeln;
-		return;
-	}
-	if(data[0..2] != [0xd5, 0x4b]){
-		"not pol rcv".writeln;
-		return;
-	}
-	"tags count:".write;
-	data[2].writeln;
-	Tag[] tags = data.splitTag;
-	foreach(tag; tags){
-		tag.write;
-		lastTag = tag;
 	}
 }
 ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
@@ -120,8 +103,9 @@ ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
 	return blockData;
 }
 void balance(){
-	rcs620s.polling(0x01, 0x01, 0x03, 0x01).polPrint;
-	if(lastTag.reqData != [0x00, 0x03]){
+	auto tags = rcs620s.polling(0x01, 0x01, 0x03, 0x01);
+	auto lastTag = tags[0];
+	if(lastTag.systemCode != 0x0003){
 		"balance data not exsist".writeln;
 		return;
 	}
@@ -150,43 +134,16 @@ void balance(){
 	writefln("out: %x:%x", outLine, outStation);
 	writefln("%d円", balance);
 }
-struct Tag{
-	ubyte[] idm;
-	ubyte[] ppm;
-	ubyte[] reqData;
-	this(ubyte[] data){
-		idm = data[0..8];
-		ppm = data[8..16];
-		reqData = data[16..$];
-	}
-	void write(){
-		"idm:".write;
-		print(idm);
-		"ppm:".write;
-		print(ppm);
-		"reqData:".write;
-		print(reqData);
-	}
-}
-Tag[] splitTag(ubyte[] data){
-	Tag[] tags;
-	auto count = data[2];
-	data = data[3..$];
-	for(int i = 0; i < count; i++){
-		data.print;
-		auto len = data[1];
-		tags ~= Tag(data[3..len+1]);
-		data = data[(len+1)..$];
-	}
-	return tags;
-}
-Tag lastTag;
+FeliCa lastTag;
 void main()
 {
 	rcs620s = new RCS620S(new SerialPort("/dev/ttyUSB0",dur!"msecs"(100),dur!"msecs"(100)));
-	rcs620s.polling(1, 1, 0xffff, 1).polPrint;
-	if(lastTag.reqData == [0x00, 0x03]){
-		balance();
+	auto tags = rcs620s.polling(1, 1, 0xffff, 1);
+	if(tags.length > 0){
+		lastTag = tags[0];
+		if(lastTag.systemCode == 0x0003){
+			balance();
+		}
 	}
 	bool running = true;
 	while(running){
@@ -195,7 +152,7 @@ void main()
 		ubyte[] data;
 		switch(command){
 			case "firm":
-				rcs620s.getFirmwareVersion.print;
+				rcs620s.getFirmwareVersion.writeln;
 				break;
 			case "status":
 				rcs620s.getStatus.print;
@@ -223,7 +180,11 @@ void main()
 				uint systemCode = readln.chomp.to!uint(16);
 				"reqCode:".write;
 				ubyte requestCode = readln.chomp.to!ubyte;
-				rcs620s.polling(count, speed, systemCode, requestCode).polPrint;
+				tags = rcs620s.polling(count, speed, systemCode, requestCode);
+				if(tags.length > 0){
+					lastTag = tags[0];
+					lastTag.writeln;
+				}
 				break;
 			case "scanSrv":
 				import nfc.tag.felica.service;
@@ -305,7 +266,7 @@ void main()
 					blocks ~= readln.chomp.to!ushort(16);
 				}
 				auto blockData = readWithoutEncrypt(lastTag.idm, services, blocks);
-				if(lastTag.reqData == [0x00, 0x03]){
+				if(lastTag.systemCode == 0x0003){
 					auto b = blockData[0];
 					ubyte console = b[0];
 					ubyte process = b[1];
@@ -332,7 +293,7 @@ void main()
 			case "balanceloop":
 				while(true){
 					balance();
-					if(lastTag.reqData != [0x00, 0x03]){
+					if(lastTag.systemCode != 0x0003){
 						break;
 					}
 					import core.thread;
