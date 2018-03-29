@@ -97,15 +97,6 @@ void polPrint(ubyte[] data){
 		lastTag = tag;
 	}
 }
-ubyte[] polling(ubyte count = 0x01, ubyte speed = 0x01, uint systemCode = 0xffff, ubyte requestCode = 0x00){
-	ubyte[] data = [0xd4, 0x4a, count, speed, 0x00, 0xff, 0xff, requestCode, 0x00];
-	data[5] = (systemCode >> 8) & 0xff;
-	data[6] = systemCode & 0xff;
-	if(data[2] != 1){
-		data[8] = 0x0f;
-	}
-	return data.send;
-}
 ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
 	ubyte[] data = 0x02 ~ idm;
 	ubyte nodeCount = nodes.length.to!ubyte;
@@ -113,7 +104,7 @@ ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
 	foreach(node; nodes){
 		data ~= node;
 	}
-	auto rcv = data.cardCommand;
+	auto rcv = rcs620s.cardCommand(data);
 	if(rcv[0] != 0x03){
 		"not response".writeln;
 		return null;
@@ -162,7 +153,7 @@ ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
 		data ~= block;
 	}
 	data.print;
-	auto rcv = data.cardCommand;
+	auto rcv = rcs620s.cardCommand(data);
 	if(rcv is null){
 		return null;
 	}
@@ -192,7 +183,7 @@ ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
 	return blockData;
 }
 void balance(){
-	polling(0x01, 0x01, 0x03, 0x01).polPrint;
+	rcs620s.polling(0x01, 0x01, 0x03, 0x01).polPrint;
 	if(lastTag.reqData != [0x00, 0x03]){
 		"balance data not exsist".writeln;
 		return;
@@ -221,36 +212,6 @@ void balance(){
 	writefln("in : %x:%x", inLine, inStation);
 	writefln("out: %x:%x", outLine, outStation);
 	writefln("%d円", balance);
-}
-ubyte[] cardCommand(ubyte[] command, uint timeOut = 400){
-	ubyte[] data = [0xd4, 0xa0];
-	ushort timeOutHalfSecCount = (timeOut* 2).to!ushort;
-	data ~= timeOutHalfSecCount & 0xff;
-	data ~= (timeOutHalfSecCount >> 8) & 0xff;
-	data ~= 0x00;
-	data ~= command;
-	data[4] = (data.length - 4).to!ubyte;
-	auto rcv = data.send;
-	if(rcv.length <= 2){
-		"not enough length".writeln;
-		return null;
-	}
-	if(rcv[0..2] != [0xd5, 0xa1]){
-		"not comThruEX data".writeln;
-		return null;
-	}
-	if(rcv[2] != 0x00){
-		"com error code:".write;
-		writef("%x",rcv[2]);
-		return null;
-	}
-	rcv = rcv[3..$];
-	if(rcv[0] != rcv.length){
-		"length not same".writeln;
-		return null;
-	}
-	rcv = rcv[1..$];
-	return rcv;
 }
 struct Tag{
 	ubyte[] idm;
@@ -282,14 +243,11 @@ Tag[] splitTag(ubyte[] data){
 	}
 	return tags;
 }
-ubyte[] send(ubyte[] data){
-	return rcs620s.rwCommand(data);
-}
 Tag lastTag;
 void main()
 {
 	rcs620s = new RCS620S(new SerialPort("/dev/ttyUSB0",dur!"msecs"(100),dur!"msecs"(100)));
-	polling(1, 1, 0xffff, 1).polPrint;
+	rcs620s.polling(1, 1, 0xffff, 1).polPrint;
 	if(lastTag.reqData == [0x00, 0x03]){
 		balance();
 	}
@@ -300,28 +258,24 @@ void main()
 		ubyte[] data;
 		switch(command){
 			case "firm":
-				data = [0xd4, 0x02];
-				send(data).print;
+				rcs620s.getFirmwareVersion.print;
 				break;
 			case "status":
-				data = [0xd4, 0x04];
-				send(data).print;
+				rcs620s.getStatus.print;
 				break;
 			case "reset":
-				data = [0xd4, 0x18, 0x01];
-				send(data).print;
+				rcs620s.reset.print;
 				break;
 			case "rfon":
-				data = [0xd4, 0x32, 0x01, 0x01];
-				send(data).print;
+				rcs620s.rfOn.print;
 				break;
 			case "rfoff":
 				data = [0xd4, 0x32, 0x01, 0x00];
-				send(data).print;
+				rcs620s.rfOff;
 				break;
 			case "retry":
-				data = [0xd4, 0x32, 0x05, 0xff, 0x00, 0x00];
-				send(data).print;
+				//data = [0xd4, 0x32, 0x05, 0xff, 0x00, 0x00];
+				//send(data).print;
 				break;
 			case "pol":
 				"count:".write;
@@ -332,7 +286,7 @@ void main()
 				uint systemCode = readln.chomp.to!uint(16);
 				"reqCode:".write;
 				ubyte requestCode = readln.chomp.to!ubyte;
-				polling(count, speed, systemCode, requestCode).polPrint;
+				rcs620s.polling(count, speed, systemCode, requestCode).polPrint;
 				break;
 			case "scanSrv":
 				ubyte[][] nodes;
@@ -384,12 +338,12 @@ void main()
 			case "reqSys":
 				data ~= 0x0c;
 				data ~= lastTag.idm;
-				data.cardCommand.print;
+				rcs620s.cardCommand(data).print;
 				break;
 			case "reqRes":
 				data ~= 0x04;
 				data ~= lastTag.idm;
-				data.cardCommand.print;
+				rcs620s.cardCommand(data).print;
 				break;
 			case "read":
 				ushort[] services;
@@ -457,9 +411,9 @@ void main()
 				foreach(string s; tmp){
 					data ~= s.to!int(16).to!ubyte;
 				}
-				data.cardCommand.print;
+				rcs620s.cardCommand(data).print;
 				break;
-			case "send":
+			/*case "send":
 				"data> ".write;
 				string[] tmp = readln.chomp.split(' ');
 				foreach(string s; tmp){
@@ -467,7 +421,7 @@ void main()
 				}
 				data.print;
 				send(data).print;
-				break;
+				break;*/
 			case "exit":
 			case "quit":
 			case "e":

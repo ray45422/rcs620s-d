@@ -65,6 +65,65 @@ public:
 		}
 		return true;
 	}
+	/*TODO テストコードからの移植
+	  エラーチェックなど追加
+	*/
+	ubyte[] polling(ubyte count = 0x01, ubyte speed = 0x01, uint systemCode = 0xffff, ubyte requestCode = 0x00){
+		ubyte[] data = [0xd4, 0x4a, count, speed, 0x00, 0xff, 0xff, requestCode, 0x00];
+		data[5] = (systemCode >> 8) & 0xff;
+		data[6] = systemCode & 0xff;
+		if(data[2] != 1){
+			data[8] = 0x0f;
+		}
+		return rwCommand(data);
+	}
+	ubyte[] rfOn(){
+		ubyte[] data = [0xd4, 0x32, 0x01, 0x01];
+		return rwCommand(data);
+	}
+	ubyte[] getFirmwareVersion(){
+		ubyte[] data = [0xd4, 0x02];
+		return rwCommand(data);
+	}
+	ubyte[] getStatus(){
+		ubyte[] data = [0xd4, 0x04];
+		return rwCommand(data);
+	}
+	ubyte[] reset(){
+		ubyte[] data = [0xd4, 0x18, 0x01];
+		return rwCommand(data);
+	}
+	ubyte[] cardCommand(ubyte[] command, uint timeOut = 400){
+		ubyte[] data = [0xd4, 0xa0];
+		ushort timeOutHalfSecCount = (timeOut* 2).to!ushort;
+		data ~= timeOutHalfSecCount & 0xff;
+		data ~= (timeOutHalfSecCount >> 8) & 0xff;
+		data ~= 0x00;
+		data ~= command;
+		data[4] = (data.length - 4).to!ubyte;
+		auto rcv = rwCommand(data);
+		if(rcv.length <= 2){
+			"not enough length".writeln;
+			return null;
+		}
+		if(rcv[0..2] != [0xd5, 0xa1]){
+			"not comThruEX data".writeln;
+			return null;
+		}
+		if(rcv[2] != 0x00){
+			"com error code:".write;
+			writef("%x",rcv[2]);
+			return null;
+		}
+		rcv = rcv[3..$];
+		if(rcv[0] != rcv.length){
+			"length not same".writeln;
+			return null;
+		}
+		rcv = rcv[1..$];
+		return rcv;
+	}
+	/* end TODO */
 	void writeArray(ubyte[] data){
 		"[".write;
 		foreach(ubyte n; data){
@@ -80,7 +139,7 @@ private:
 	const uint RCS620S_MAX_CARD_RESPONSE_LEN = 254;
 	const uint RCS620S_MAX_RW_RESPONSE_LEN = 265;
 	SerialPort port;
-	public ubyte[] rwCommand(ubyte[] command){
+	ubyte[] rwCommand(ubyte[] command){
 		ubyte[] buf;
 		ubyte dcs;
 		ubyte[] response;
