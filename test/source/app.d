@@ -14,14 +14,14 @@ void nodePrint(ubyte[][] data){
 		rcs620s.writeArray(d);
 	}
 }
-ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
-	ubyte[] data = 0x02 ~ idm;
+ubyte[][] requestService(FeliCa tag, ubyte[][] nodes){
+	ubyte[] data = 0x02 ~ tag.idm;
 	ubyte nodeCount = nodes.length.to!ubyte;
 	data ~= nodeCount;
 	foreach(node; nodes){
 		data ~= node;
 	}
-	auto rcv = rcs620s.cardCommand(data);
+	auto rcv = tag.command(data);
 	if(rcv.length == 0){
 		return null;
 	}
@@ -30,7 +30,7 @@ ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
 		return null;
 	}
 	rcv = rcv[1..$];
-	if(rcv[0..8] != idm){
+	if(rcv[0..8] != tag.idm){
 		"wrong tag".writeln;
 		return null;
 	}
@@ -47,9 +47,9 @@ ubyte[][] requestService(ubyte[] idm, ubyte[][] nodes){
 	}
 	return nodes;
 }
-ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
+ubyte[][] readWithoutEncrypt(FeliCa tag, ushort[] services, ushort[] blocks){
 	ubyte[] data = [0x06];
-	data ~= idm;
+	data ~= tag.idm;
 	ubyte serviceCount = services.length.to!ubyte;
 	data ~= serviceCount;
 	foreach(serviceN; services){
@@ -73,7 +73,7 @@ ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
 		data ~= block;
 	}
 	data.print;
-	auto rcv = rcs620s.cardCommand(data);
+	auto rcv = tag.command(data);
 	if(rcv is null){
 		return null;
 	}
@@ -82,7 +82,7 @@ ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
 		return null;
 	}
 	rcv = rcv[1..$];
-	if(rcv[0..8] != idm){
+	if(rcv[0..8] != tag.idm){
 		"wrong tag".writeln;
 		return null;
 	}
@@ -114,7 +114,7 @@ void balance(){
 	}
 	ushort[] service = [0x090f];
 	ushort[] block = [0x00];
-	auto blocks = readWithoutEncrypt(lastTag.idm, service, block);
+	auto blocks = readWithoutEncrypt(lastTag, service, block);
 	if(blocks is null){
 		return;
 	}
@@ -225,7 +225,7 @@ void main()
 						auto service = Service(i, attributeValueOf(attr));
 						nodes ~= service.pack;
 					}
-					auto rcv = requestService(lastTag.idm, nodes);
+					auto rcv = requestService(lastTag, nodes);
 					foreach(j, keyVer; rcv){
 						if(keyVer == [0xff, 0xff]){
 							continue;
@@ -258,17 +258,17 @@ void main()
 					nodes ~= data;
 					data = [];
 				}
-				requestService(lastTag.idm, nodes).nodePrint;
+				requestService(lastTag, nodes).nodePrint;
 				break;
 			case "reqSys":
 				data ~= 0x0c;
 				data ~= lastTag.idm;
-				rcs620s.cardCommand(data).print;
+				lastTag.command(data).print;
 				break;
 			case "reqRes":
 				data ~= 0x04;
 				data ~= lastTag.idm;
-				rcs620s.cardCommand(data).print;
+				lastTag.command(data).print;
 				break;
 			case "read":
 				ushort[] services;
@@ -292,7 +292,7 @@ void main()
 					":".write;
 					blocks ~= readln.chomp.to!ushort(16);
 				}
-				auto blockData = readWithoutEncrypt(lastTag.idm, services, blocks);
+				auto blockData = readWithoutEncrypt(lastTag, services, blocks);
 				if(lastTag.systemCode == 0x0003){
 					auto b = blockData[0];
 					ubyte console = b[0];

@@ -21,6 +21,19 @@ class FeliCa{
 				return new FeliCa(idm, pmm);
 		}
 	}
+	static FeliCa factory(ubyte[] idm, ubyte[] pmm, Device dev){
+		switch(getProduct(pmm[1]).type){
+			case FeliCaType.FeliCa_STANDARD:
+				return new FeliCaStandard(idm, pmm, dev);
+			case FeliCaType.FeliCa_LITE:
+				return new FeliCaLite(idm, pmm, dev);
+			case FeliCaType.FeliCa_LITES:
+				return new FeliCaLiteS(idm, pmm, dev);
+			case FeliCaType.FeliCa_UNKNOWN:
+			default:
+				return new FeliCa(idm, pmm, dev);
+		}
+	}
 	static enum CommunicationSpeed{
 		F_212K        = 0b00000001,
 		F_424K        = 0b00000010,
@@ -36,14 +49,22 @@ class FeliCa{
 		0b10000000: "auto detect"
 	];
 	this(ubyte[] idm, ubyte[] pmm){
-		this._idm = idm;
-		this._pmm = pmm;
-		this._product = getProduct(pmm[1]);
+		this(idm, pmm, getProduct(pmm[1]));
+	}
+	this(ubyte[] idm, ubyte[] pmm, Device dev){
+		this(idm, pmm, getProduct(pmm[1]), dev);
 	}
 	this(ubyte[] idm, ubyte[] pmm, ICProduct product){
 		this._idm = idm;
 		this._pmm = pmm;
 		this._product = product;
+	}
+	this(ubyte[] idm, ubyte[] pmm, ICProduct product, Device dev){
+		this(idm, pmm, product);
+		this._dev = dev;
+	}
+	ubyte[] command(ubyte[] data, uint timeOut = 400){
+		return _dev.cardCommand(data, timeOut);
 	}
 	void setSystemCode(ubyte[] systemCode){
 		sysCode = systemCode[0] << 8 | systemCode[1];
@@ -88,7 +109,7 @@ class FeliCa{
 		return type;
 	}
 private:
-	Device device;
+	Device _dev;
 	ICProduct _product;
 	ubyte[] _idm;
 	ubyte[] _pmm;

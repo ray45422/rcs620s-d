@@ -1,4 +1,5 @@
 module nfc.tag.felica.felicaLiteS;
+import nfc.device;
 import nfc.tag.felica;
 
 class FeliCaLiteS: FeliCa{
@@ -7,5 +8,8 @@ class FeliCaLiteS: FeliCa{
 	}
 	this(ubyte[] idm, ubyte[] ppm){
 		super(idm, ppm);
+	}
+	this(ubyte[] idm, ubyte[] ppm, Device dev){
+		super(idm, ppm, dev);
 	}
 }

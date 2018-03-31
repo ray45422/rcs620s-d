@@ -48,7 +48,7 @@ public:
 		rcv = rcv[3..$];
 		for(int i = 0; i < tagCount; ++i){
 			auto len = rcv[1];
-			auto felica = FeliCa.factory(rcv[3..11], rcv[11..19]);
+			auto felica = FeliCa.factory(rcv[3..11], rcv[11..19], this);
 			if(requestCode == 1){
 				felica.setSystemCode(rcv[19..21]);
 			}
