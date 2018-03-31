@@ -1,14 +1,15 @@
 module nfc.tag.felica;
 import std.stdio;
+import std.conv;
 import nfc.device;
-import nfc.tag.felica.felicaStandard;
-import nfc.tag.felica.felicaLite;
-import nfc.tag.felica.felicaLiteS;
-
+public import nfc.tag.felica.product;
+public import nfc.tag.felica.felicaStandard;
+public import nfc.tag.felica.felicaLite;
+public import nfc.tag.felica.felicaLiteS;
 
 class FeliCa{
 	static FeliCa factory(ubyte[] idm, ubyte[] pmm){
-		switch(checkType(pmm)){
+		switch(getProduct(pmm[1]).type){
 			case FeliCaType.FeliCa_STANDARD:
 				return new FeliCaStandard(idm, pmm);
 			case FeliCaType.FeliCa_LITE:
@@ -19,22 +20,6 @@ class FeliCa{
 			default:
 				return new FeliCa(idm, pmm);
 		}
-	}
-	static FeliCaType checkType(ubyte[] pmm){
-		if(pmm[1] <= 0x1f){
-			return FeliCaType.FeliCa_STANDARD;
-		}else if(pmm[1] == 0xf0){
-			return FeliCaType.FeliCa_LITE;
-		}else if(pmm[1] == 0xf1){
-			return FeliCaType.FeliCa_LITES;
-		}
-		return FeliCaType.FeliCa_UNKNOWN;
-	}
-	static enum FeliCaType: string{
-		FeliCa_UNKNOWN = "Unknown FeliCa",
-		FeliCa_STANDARD = "FeliCa Standard",
-		FeliCa_LITE = "FeliCa Lite",
-		FeliCa_LITES = "FeliCa Lite-S"
 	}
 	static enum CommunicationSpeed{
 		F_212K        = 0b00000001,
@@ -53,6 +38,12 @@ class FeliCa{
 	this(ubyte[] idm, ubyte[] pmm){
 		this._idm = idm;
 		this._pmm = pmm;
+		this._product = getProduct(pmm[1]);
+	}
+	this(ubyte[] idm, ubyte[] pmm, ICProduct product){
+		this._idm = idm;
+		this._pmm = pmm;
+		this._product = product;
 	}
 	void setSystemCode(ubyte[] systemCode){
 		sysCode = systemCode[0] << 8 | systemCode[1];
@@ -67,7 +58,10 @@ class FeliCa{
 		comSpec = communicationSpec;
 	}
 	FeliCaType type(){
-		return checkType(_pmm);
+		return _product.type;
+	}
+	ICProduct product(){
+		return _product;
 	}
 	@property
 	ubyte[] idm(){
@@ -95,9 +89,13 @@ class FeliCa{
 	}
 private:
 	Device device;
+	ICProduct _product;
 	ubyte[] _idm;
 	ubyte[] _pmm;
 	ushort sysCode;
 	ushort comSpec;
 }
 
+unittest{
+	assert(getProduct(0xff).type == FeliCaType.FeliCa_UNKNOWN);
+}

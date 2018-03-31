@@ -104,6 +104,9 @@ ubyte[][] readWithoutEncrypt(ubyte[] idm, ushort[] services, ushort[] blocks){
 }
 void balance(){
 	auto tags = rcs620s.polling(0x01, 0x01, 0x03, 0x01);
+	if(tags.length == 0){
+		return;
+	}
 	auto lastTag = tags[0];
 	if(lastTag.systemCode != 0x0003){
 		"balance data not exsist".writeln;
@@ -145,6 +148,7 @@ void main()
 		lastTag.idm.writeln;
 		"pmm:".write;
 		lastTag.pmm.writeln;
+		lastTag.product.writeln;
 		if(lastTag.systemCode == 0x0003){
 			balance();
 		}
@@ -175,6 +179,17 @@ void main()
 				//data = [0xd4, 0x32, 0x05, 0xff, 0x00, 0x00];
 				//send(data).print;
 				break;
+			case "p":
+				tags = rcs620s.polling(1, 1, 0xffff, 1);
+				if(tags.length > 0){
+					lastTag = tags[0];
+					"idm:".write;
+					lastTag.idm.writeln;
+					"pmm:".write;
+					lastTag.pmm.writeln;
+					lastTag.product.writeln;
+				}
+				break;
 			case "pol":
 				"count:".write;
 				ubyte count = readln.chomp.to!ubyte;
@@ -185,13 +200,13 @@ void main()
 				"reqCode:".write;
 				ubyte requestCode = readln.chomp.to!ubyte;
 				tags = rcs620s.polling(count, speed, systemCode, requestCode);
-				if(tags.length > 0){
-					lastTag = tags[0];
+				foreach(tag; tags){
+					lastTag = tag;
 					"idm:".write;
 					lastTag.idm.writeln;
 					"pmm:".write;
 					lastTag.pmm.writeln;
-					lastTag.writeln;
+					lastTag.product.writeln;
 				}
 				break;
 			case "scanSrv":
