@@ -141,6 +141,10 @@ void main()
 	auto tags = rcs620s.polling(1, 1, 0xffff, 1);
 	if(tags.length > 0){
 		lastTag = tags[0];
+		"idm:".write;
+		lastTag.idm.writeln;
+		"pmm:".write;
+		lastTag.pmm.writeln;
 		if(lastTag.systemCode == 0x0003){
 			balance();
 		}
@@ -183,12 +187,20 @@ void main()
 				tags = rcs620s.polling(count, speed, systemCode, requestCode);
 				if(tags.length > 0){
 					lastTag = tags[0];
+					"idm:".write;
+					lastTag.idm.writeln;
+					"pmm:".write;
+					lastTag.pmm.writeln;
 					lastTag.writeln;
 				}
 				break;
 			case "scanSrv":
 				import nfc.tag.felica.service;
 				ubyte[][] nodes;
+				if(lastTag is null){
+					"no tag detected".writeln;
+					break;
+				}
 				for(ushort i = 0; i < 0b1111111111; ++i){
 					for(ubyte attr = 8; attr < 24; ++attr){
 						if(attr % 2 == 0){
@@ -209,7 +221,7 @@ void main()
 						", serviceCode:".write;
 						i.write;
 						", ".write;
-						service.serviceAttribute.toString.write;
+						service.serviceAttribute.desc.write;
 						", keyVer:".write;
 						writef("[%02x, %02x]", keyVer[0], keyVer[1]);
 						"]".writeln;
