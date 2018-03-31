@@ -40,13 +40,14 @@ private:
 
 ServiceAttribute attributeValueOf(ubyte value){
 	if(value >= 0b001000 && value <= 0b010111){
-		return AttrResolvTable[value];
+		import std.conv;
+		return value.to!ServiceAttribute;
 	}
 	return ServiceAttribute.INVALIDE_SERVICE;
 }
 
 enum ServiceAttribute: _ServiceAttribute{
-	INVALIDE_SERVICE          = _ServiceAttribute(0b000000),
+	INVALIDE_SERVICE    = _ServiceAttribute(0b000000),
 	RANDOM_RW_AUTH      = _ServiceAttribute(0b001000),
 	RANDOM_RW_NOAUTH    = _ServiceAttribute(0b001001),
 	RANDOM_R_AUTH       = _ServiceAttribute(0b001010),
@@ -64,25 +65,6 @@ enum ServiceAttribute: _ServiceAttribute{
 	PARSE_R_AUTH        = _ServiceAttribute(0b010110),
 	PARSE_R_NOAUTH      = _ServiceAttribute(0b010111),
 }
-private immutable ServiceAttribute[] AttrResolvTable = [
-	0b000000: ServiceAttribute.INVALIDE_SERVICE,
-	0b001000: ServiceAttribute.RANDOM_RW_AUTH,
-	0b001001: ServiceAttribute.RANDOM_RW_NOAUTH,
-	0b001010: ServiceAttribute.RANDOM_R_AUTH,
-	0b001011: ServiceAttribute.RANDOM_R_NOAUTH,
-	0b001100: ServiceAttribute.CYCLIC_RW_AUTH,
-	0b001101: ServiceAttribute.CYCLIC_RW_NOAUTH,
-	0b001110: ServiceAttribute.CYCLIC_R_AUTH,
-	0b001111: ServiceAttribute.CYCLIC_R_NOAUTH,
-	0b010000: ServiceAttribute.PARSE_DIRECT_AUTH,
-	0b010001: ServiceAttribute.PARSE_DIRECT_NOAUTH,
-	0b010010: ServiceAttribute.PARSE_CBDE_AUTH,
-	0b010011: ServiceAttribute.PARSE_CBDE_NOAUTH,
-	0b010100: ServiceAttribute.PARSE_DE_AUTH,
-	0b010101: ServiceAttribute.PARSE_DE_NOAUTH,
-	0b010110: ServiceAttribute.PARSE_R_AUTH,
-	0b010111: ServiceAttribute.PARSE_R_NOAUTH,
-];
 private struct _ServiceAttribute{
 	this(ubyte attr){
 		_attr = attr;
