@@ -1,5 +1,6 @@
 module nfc.tag.felica;
 import std.stdio;
+import std.format;
 import std.conv;
 import nfc.device;
 public import nfc.tag.felica.product;
@@ -88,9 +89,23 @@ class FeliCa{
 	ubyte[] idm(){
 		return _idm;
 	}
+	string idmStr(){
+		string idmStr;
+		foreach(b; _idm){
+			idmStr ~= format("%02X", b);
+		}
+		return idmStr;
+	}
 	@property
 	ubyte[] pmm(){
 		return _pmm;
+	}
+	string pmmStr(){
+		string pmmStr;
+		foreach(b; _pmm){
+			pmmStr ~= format("%02X", b);
+		}
+		return pmmStr;
 	}
 	@property
 	ushort systemCode(){
@@ -106,7 +121,13 @@ class FeliCa{
 		return false;
 	}
 	override string toString(){
-		return type;
+		string str = "FeliCa(";
+		str ~= "product:" ~ _product.name;
+		str ~= ", type:" ~ type;
+		str ~= ", idm:" ~ idmStr;
+		str ~= ", pmm:" ~ pmmStr;
+		str ~= ")";
+		return str;
 	}
 private:
 	Device _dev;

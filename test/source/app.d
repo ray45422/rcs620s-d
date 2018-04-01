@@ -144,11 +144,7 @@ void main()
 	auto tags = rcs620s.polling(1, 1, 0xffff, 1);
 	if(tags.length > 0){
 		lastTag = tags[0];
-		"idm:".write;
-		lastTag.idm.writeln;
-		"pmm:".write;
-		lastTag.pmm.writeln;
-		lastTag.product.writeln;
+		lastTag.writeln;
 		if(lastTag.systemCode == 0x0003){
 			balance();
 		}
@@ -183,11 +179,7 @@ void main()
 				tags = rcs620s.polling(1, 1, 0xffff, 1);
 				if(tags.length > 0){
 					lastTag = tags[0];
-					"idm:".write;
-					lastTag.idm.writeln;
-					"pmm:".write;
-					lastTag.pmm.writeln;
-					lastTag.product.writeln;
+					lastTag.writeln;
 				}
 				break;
 			case "pol":
@@ -202,11 +194,7 @@ void main()
 				tags = rcs620s.polling(count, speed, systemCode, requestCode);
 				foreach(tag; tags){
 					lastTag = tag;
-					"idm:".write;
-					lastTag.idm.writeln;
-					"pmm:".write;
-					lastTag.pmm.writeln;
-					lastTag.product.writeln;
+					lastTag.writeln;
 				}
 				break;
 			case "scanSrv":
