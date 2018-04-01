@@ -31,6 +31,9 @@ struct Service{
 	ServiceAttribute serviceAttribute(){
 		return srvAttr;
 	}
+	bool opEqual(Service srv){
+		return ((srvNum == srv.serviceNumber) && (srvAttr == srv.serviceAttribute));
+	}
 private:
 	ushort srvNum;
 	ServiceAttribute srvAttr;
@@ -91,7 +94,6 @@ private:
 	string _desc;
 }
 unittest{
-	import std.stdio;
 	assert(Service(1023, ServiceAttribute.PARSE_R_NOAUTH).pack() == [0xd7, 0xff]);
 	assert(Service(36, ServiceAttribute.CYCLIC_R_NOAUTH).pack() == [0x0f, 0x09]);
 
