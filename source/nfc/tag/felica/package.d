@@ -2,6 +2,7 @@ module nfc.tag.felica;
 import std.stdio;
 import std.format;
 import std.conv;
+import std.algorithm.searching;
 import nfc.device;
 public import nfc.tag.felica.product;
 public import nfc.tag.felica.felicaStandard;
@@ -68,9 +69,13 @@ class FeliCa{
 		return _dev.cardCommand(data, timeOut);
 	}
 	void addSystemCode(ubyte[] systemCode){
-		sysCode ~= systemCode[0] << 8 | systemCode[1];
+		ushort system = systemCode[0] << 8 | systemCode[1];
+		addSystemCode(system);
 	}
 	void addSystemCode(ushort systemCode){
+		if(sysCode.canFind(systemCode)){
+			return;
+		}
 		sysCode ~= systemCode;
 	}
 	void setCommunicationSpec(ubyte[] communicationSpec){
@@ -140,4 +145,9 @@ private:
 
 unittest{
 	assert(getProduct(0xff).type == FeliCaType.FeliCa_UNKNOWN);
+	auto felica = FeliCa.factory([0,1,2,3,4,5,6,7],[0,0xff,2,3,4,5,6,7]);
+	felica.addSystemCode(0);
+	felica.addSystemCode(0);
+	felica.addSystemCode(2);
+	assert(felica.systemCode.length == 2);
 }
