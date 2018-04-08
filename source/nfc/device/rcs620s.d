@@ -50,7 +50,7 @@ public:
 			auto len = rcv[1];
 			auto felica = FeliCa.factory(rcv[3..11], rcv[11..19], this);
 			if(requestCode == 1){
-				felica.setSystemCode(rcv[19..21]);
+				felica.addSystemCode(rcv[19..21]);
 			}
 			if(requestCode == 2){
 				felica.setCommunicationSpec(rcv[19..21]);

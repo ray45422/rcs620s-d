@@ -67,11 +67,11 @@ class FeliCa{
 	ubyte[] command(ubyte[] data, uint timeOut = 400){
 		return _dev.cardCommand(data, timeOut);
 	}
-	void setSystemCode(ubyte[] systemCode){
-		sysCode = systemCode[0] << 8 | systemCode[1];
+	void addSystemCode(ubyte[] systemCode){
+		sysCode ~= systemCode[0] << 8 | systemCode[1];
 	}
-	void setSystemCode(ushort systemCode){
-		sysCode = systemCode;
+	void addSystemCode(ushort systemCode){
+		sysCode ~= systemCode;
 	}
 	void setCommunicationSpec(ubyte[] communicationSpec){
 		comSpec = communicationSpec[0] << 8 | communicationSpec[1];
@@ -108,7 +108,7 @@ class FeliCa{
 		return pmmStr;
 	}
 	@property
-	ushort systemCode(){
+	ushort[] systemCode(){
 		return sysCode;
 	}
 	ushort communicationSpec(){
@@ -134,7 +134,7 @@ private:
 	ICProduct _product;
 	ubyte[] _idm;
 	ubyte[] _pmm;
-	ushort sysCode;
+	ushort[] sysCode;
 	ushort comSpec;
 }
 
