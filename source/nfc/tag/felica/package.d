@@ -4,6 +4,7 @@ import std.format;
 import std.conv;
 import std.algorithm.searching;
 import nfc.device;
+import nfc.tag.felica.serviceBlock;
 public import nfc.tag.felica.product;
 public import nfc.tag.felica.felicaStandard;
 public import nfc.tag.felica.felicaLite;
@@ -67,6 +68,35 @@ class FeliCa{
 	}
 	ubyte[] command(ubyte[] data, uint timeOut = 400){
 		return _dev.cardCommand(data, timeOut);
+	}
+	ubyte[][] readWithoutEncryption(ServiceBlock s){
+		ubyte[] data = [0x06];
+		data ~= _idm;
+		data ~= s.pack;
+		data = command(data);
+		if(data.length < 11){
+			return [];
+		}
+		if(data[0] != 0x07){
+			return [];
+		}
+		data = data[1..$];
+		if(data[0..8] != _idm){
+			return [];
+		}
+		data = data[8..$];
+		if(data[0..2] != [0, 0] || data.length == 2){
+			return [data];
+		}
+		data = data[2..$];
+		ubyte[][] blockData = [];
+		ubyte len = data[0];
+		data = data[1..$];
+		for(int i = 0; i < len; ++i){
+			blockData ~= data[0..16];
+			data = data[16..$];
+		}
+		return blockData;
 	}
 	void addSystemCode(ubyte[] systemCode){
 		ushort system = systemCode[0] << 8 | systemCode[1];

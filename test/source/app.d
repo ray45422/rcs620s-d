@@ -1,10 +1,13 @@
 import std.stdio;
 import std.string;
 import std.conv;
+import std.traits;
+import std.algorithm.searching;
 import core.thread;
 import serial.device;
 import nfc.device.rcs620s;
 import nfc.tag.felica;
+import nfc.tag.felica.serviceBlock;
 RCS620S rcs620s;
 void print(ubyte[] data){
 	rcs620s.writeArray(data);
@@ -108,7 +111,7 @@ void balance(){
 		return;
 	}
 	auto lastTag = tags[0];
-	if(lastTag.systemCode != 0x0003){
+	if(!lastTag.systemCode.canFind(0x0003)){
 		"balance data not exsist".writeln;
 		return;
 	}
@@ -145,7 +148,7 @@ void main()
 	if(tags.length > 0){
 		lastTag = tags[0];
 		lastTag.writeln;
-		if(lastTag.systemCode == 0x0003){
+		if(lastTag.systemCode.canFind(0x0003)){
 			balance();
 		}
 	}
@@ -259,29 +262,66 @@ void main()
 				lastTag.command(data).print;
 				break;
 			case "read":
-				ushort[] services;
-				"service count:".write;
-				ubyte serviceCount = readln.chomp.to!ubyte;
-				data ~= serviceCount;
-				for(int i = 0; i < serviceCount; i++){
-					"service".write;
-					(i+1).write;
-					":".write;
-					ushort serviceN = readln.chomp.to!ushort(16);
-					services ~= serviceN;
-				}
-				ushort[] blocks;
+				auto sb = ServiceBlock();
+				Service bsrv = Service(0, ServiceAttribute.INVALIDE_SERVICE);
 				"block count:".write;
 				ubyte blockCount = readln.chomp.to!ubyte;
-				data ~= blockCount;
 				for(int i = 0; i < blockCount; i++){
-					"block".write;
-					(i+1).write;
+					ushort sn;
+					Service srv;
+					"service num".write;
+					if(bsrv.serviceAttribute != ServiceAttribute.INVALIDE_SERVICE){
+						"(default ".write;
+						bsrv.serviceNumber.write;
+						")".write;
+					}
 					":".write;
-					blocks ~= readln.chomp.to!ushort(16);
+					string snStr = readln.chomp;
+					if(snStr == "" && bsrv.serviceAttribute != ServiceAttribute.INVALIDE_SERVICE){
+						sn = bsrv.serviceNumber;
+					}else{
+						sn = snStr.to!ushort;
+					}
+					"choose service attr".writeln;
+					foreach(member; EnumMembers!ServiceAttribute){
+						if(member == ServiceAttribute.INVALIDE_SERVICE){
+							continue;
+						}
+						"  ".write;
+						member.attr.write;
+						":".write;
+						member.write;
+						if(member == bsrv.serviceAttribute){
+							"(default)".write;
+						}
+						"".writeln;
+					}
+					while(true){
+						try{
+							"service attr:".write;
+							string sa = readln.chomp;
+							if(sa == ""){
+								if(bsrv.serviceAttribute != ServiceAttribute.INVALIDE_SERVICE){
+									srv = bsrv;
+									break;
+								}
+							}else{
+								srv = Service(sn, sa.to!ubyte.to!ServiceAttribute);
+								bsrv = srv;
+								break;
+							}
+						}catch(Exception e){
+						}
+					}
+					"block num:".write;
+					ushort blockNum = readln.chomp.to!ushort;
+					sb.add(srv, blockNum);
 				}
-				auto blockData = readWithoutEncrypt(lastTag, services, blocks);
-				if(lastTag.systemCode == 0x0003){
+				auto blockData = lastTag.readWithoutEncryption(sb);
+				if(blockData.length == 0){
+					break;
+				}
+				if(lastTag.systemCode.canFind(0x0003)){
 					auto b = blockData[0];
 					ubyte console = b[0];
 					ubyte process = b[1];
@@ -308,7 +348,7 @@ void main()
 			case "balanceloop":
 				while(true){
 					balance();
-					if(lastTag.systemCode != 0x0003){
+					if(lastTag.systemCode.canFind(0x0003)){
 						break;
 					}
 					import core.thread;
