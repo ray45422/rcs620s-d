@@ -50,61 +50,6 @@ ubyte[][] requestService(FeliCa tag, ubyte[][] nodes){
 	}
 	return nodes;
 }
-ubyte[][] readWithoutEncrypt(FeliCa tag, ushort[] services, ushort[] blocks){
-	ubyte[] data = [0x06];
-	data ~= tag.idm;
-	ubyte serviceCount = services.length.to!ubyte;
-	data ~= serviceCount;
-	foreach(serviceN; services){
-		ubyte[] service;
-		service ~= serviceN & 0xff;
-		service ~= (serviceN >> 8) & 0xff;
-		data ~= service;
-	}
-	ubyte blockCount = blocks.length.to!ubyte;
-	data ~= blockCount;
-	foreach(blockN; blocks){
-		ubyte[] block;
-		if(blockN > 0xff){
-			block ~= 0b10000000;
-			block ~= (blockN >> 8) & 0xff;
-			block ~= blockN & 0xff;
-		}else{
-			block ~= 0b10000000;
-			block ~= blockN & 0xff;
-		}
-		data ~= block;
-	}
-	data.print;
-	auto rcv = tag.command(data);
-	if(rcv is null){
-		return null;
-	}
-	if(rcv[0] != 0x07){
-		"not response".writeln;
-		return null;
-	}
-	rcv = rcv[1..$];
-	if(rcv[0..8] != tag.idm){
-		"wrong tag".writeln;
-		return null;
-	}
-	rcv = rcv[8..$];
-	if(rcv[0..2] != [0x00, 0x00]){
-		"error code:".write;
-		rcv[0..2].print;
-		return null;
-	}
-	rcv = rcv[2..$];
-	ubyte[][] blockData = [];
-	ubyte len = rcv[0];
-	rcv = rcv[1..$];
-	for(int i = 0; i < len; ++i){
-		blockData ~= rcv[0..16];
-		rcv = rcv[16..$];
-	}
-	return blockData;
-}
 void balance(){
 	auto tags = rcs620s.polling(0x01, 0x01, 0x03, 0x01);
 	if(tags.length == 0){
@@ -115,9 +60,8 @@ void balance(){
 		"balance data not exsist".writeln;
 		return;
 	}
-	ushort[] service = [0x090f];
-	ushort[] block = [0x00];
-	auto blocks = readWithoutEncrypt(lastTag, service, block);
+	auto sb = ServiceBlock(Service(36, ServiceAttribute.CYCLIC_R_NOAUTH), 0);
+	auto blocks = lastTag.readWithoutEncryption(sb);
 	if(blocks is null){
 		return;
 	}
