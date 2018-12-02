@@ -51,12 +51,12 @@ ubyte[][] requestService(FeliCa tag, ubyte[][] nodes){
 	return nodes;
 }
 void balance(){
-	auto tags = rcs620s.polling(0x01, 0x01, 0x03, 0x01);
+	auto tags = rcs620s.polling(0x01, 0x01, 0xffff, 0x01);
 	if(tags.length == 0){
 		return;
 	}
-	auto lastTag = tags[0];
-	if(!lastTag.systemCode.canFind(0x0003)){
+	lastTag = tags[0];
+	if(!lastTag.systemCode.canFind([0x0003], [0x865e])){
 		"balance data not exsist".writeln;
 		return;
 	}
@@ -92,9 +92,7 @@ void main()
 	if(tags.length > 0){
 		lastTag = tags[0];
 		lastTag.writeln;
-		if(lastTag.systemCode.canFind(0x0003)){
-			balance();
-		}
+		balance();
 	}
 	bool running = true;
 	while(running){
@@ -292,7 +290,10 @@ void main()
 			case "balanceloop":
 				while(true){
 					balance();
-					if(lastTag.systemCode.canFind(0x0003)){
+					if(lastTag is null) {
+						continue;
+					}
+					if(lastTag.systemCode.canFind([0x0003], [0x865e])){
 						break;
 					}
 					import core.thread;
