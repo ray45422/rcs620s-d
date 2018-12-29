@@ -9,9 +9,6 @@ import nfc.tag.felica;
 
 class RCS620S: Device{
 public:
-	ubyte[8] idm;
-	ubyte[8] pmm;
-	ulong timeout;
 	this(string path){
 		this(new SerialPort(path, dur!("msecs")(90), dur!("msecs")(90)));
 	}
@@ -147,6 +144,9 @@ private:
 	const uint RCS620S_DEFAULT_TIMEOUT = 1000;
 	const uint RCS620S_MAX_CARD_RESPONSE_LEN = 254;
 	const uint RCS620S_MAX_RW_RESPONSE_LEN = 265;
+	ubyte[8] idm;
+	ubyte[8] pmm;
+	ulong timeout;
 	SerialPort port;
 	ubyte[] rwCommand(ubyte[] command){
 		ubyte[] buf;

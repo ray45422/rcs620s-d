@@ -51,21 +51,6 @@ class FeliCa{
 		0b00001000: "1.6Mbps(reserved)",
 		0b10000000: "auto detect"
 	];
-	this(ubyte[] idm, ubyte[] pmm){
-		this(idm, pmm, getProduct(pmm[1]));
-	}
-	this(ubyte[] idm, ubyte[] pmm, Device dev){
-		this(idm, pmm, getProduct(pmm[1]), dev);
-	}
-	this(ubyte[] idm, ubyte[] pmm, ICProduct product){
-		this._idm = idm;
-		this._pmm = pmm;
-		this._product = product;
-	}
-	this(ubyte[] idm, ubyte[] pmm, ICProduct product, Device dev){
-		this(idm, pmm, product);
-		this._dev = dev;
-	}
 	ubyte[] command(ubyte[] data, uint timeOut = 400){
 		return _dev.cardCommand(data, timeOut);
 	}
@@ -163,6 +148,22 @@ class FeliCa{
 		str ~= ", pmm:" ~ pmmStr;
 		str ~= ")";
 		return str;
+	}
+protected:
+	this(ubyte[] idm, ubyte[] pmm){
+		this(idm, pmm, getProduct(pmm[1]));
+	}
+	this(ubyte[] idm, ubyte[] pmm, Device dev){
+		this(idm, pmm, getProduct(pmm[1]), dev);
+	}
+	this(ubyte[] idm, ubyte[] pmm, ICProduct product){
+		this._idm = idm;
+		this._pmm = pmm;
+		this._product = product;
+	}
+	this(ubyte[] idm, ubyte[] pmm, ICProduct product, Device dev){
+		this(idm, pmm, product);
+		this._dev = dev;
 	}
 private:
 	Device _dev;
