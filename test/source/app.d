@@ -50,6 +50,26 @@ ubyte[][] requestService(FeliCa tag, ubyte[][] nodes){
 	}
 	return nodes;
 }
+ubyte[] searchService(FeliCa tag, ushort nodes){
+	ubyte[] data = 0x0a ~ tag.idm;
+	data ~= nodes >> 8;
+	data ~= nodes & 0xff;
+	auto rcv = tag.command(data);
+	if(rcv.length == 0){
+		return null;
+	}
+	if(rcv[0] != 0x0b){
+		"not response".writeln;
+		return null;
+	}
+	rcv = rcv[1..$];
+	if(rcv[0..8] != tag.idm){
+		"wrong tag".writeln;
+		return null;
+	}
+	rcv = rcv[8..$];
+	return rcv;
+}
 void balance(){
 	auto tags = rcs620s.polling(0x01, 0x01, 0xffff, 0x01);
 	if(tags.length == 0){
@@ -150,12 +170,13 @@ void main()
 					break;
 				}
 				for(ushort i = 0; i < 0b1111111111; ++i){
-					for(ubyte attr = 8; attr < 24; ++attr){
-						if(attr % 2 == 0){
-							continue;
-						}
+					for(ubyte attr = 0; attr < 24; ++attr){
 						ubyte[] d;
 						auto service = Service(i, attributeValueOf(attr));
+						if(service.serviceAttribute == ServiceAttribute.INVALIDE_SERVICE)
+						{
+							continue;
+						}
 						nodes ~= service.pack;
 					}
 					auto rcv = requestService(lastTag, nodes);
@@ -172,6 +193,14 @@ void main()
 						service.serviceAttribute.desc.write;
 						", keyVer:".write;
 						writef("[%02x, %02x]", keyVer[0], keyVer[1]);
+						if(service.to!string.canFind("AREA")){
+							ushort area = (cast(ushort)nodes[j][1]) << 8 | nodes[j][0];
+							auto areaData = searchService(lastTag, area);
+							if(areaData.length == 4) {
+								writef(", %02x%02x", areaData[0], areaData[1]);
+								writef(", %02x%02x", areaData[2], areaData[3]);
+							}
+						}
 						"]".writeln;
 					}
 					nodes = [];
@@ -193,10 +222,34 @@ void main()
 				}
 				requestService(lastTag, nodes).nodePrint;
 				break;
+			case "searchSrv":
+				"index:".write;
+				ushort index = readln.chomp.to!ushort(16);
+				searchService(lastTag, index).print;
+				break;
 			case "reqSys":
 				data ~= 0x0c;
 				data ~= lastTag.idm;
-				lastTag.command(data).print;
+				auto d = lastTag.command(data);
+				if(d.length < 10) {
+					"no data".writeln;
+					break;
+				}
+				d = d[9..$];
+				auto count = d[0];
+				d = d[1..$];
+				if(d.length != count * 2) {
+					"invalid data".writeln;
+					break;
+				}
+				ushort[] sysCode;
+				for(int i = 0; i < count; i++) {
+					ushort code = (cast(ushort)d[0]) << 8 | d[1];
+					writef("%04x, ", code);
+					sysCode ~= code;
+					d = d[2..$];
+				}
+				writeln;
 				break;
 			case "reqRes":
 				data ~= 0x04;

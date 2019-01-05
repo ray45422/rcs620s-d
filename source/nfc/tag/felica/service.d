@@ -44,14 +44,15 @@ private:
 }
 
 ServiceAttribute attributeValueOf(ubyte value){
-	if(value >= 0b001000 && value <= 0b010111){
+	if(value <= 0b1 || value >= 0b001000 && value <= 0b010111){
 		import std.conv;
 		return value.to!ServiceAttribute;
 	}
 	return ServiceAttribute.INVALIDE_SERVICE;
 }
 enum ServiceAttribute: _ServiceAttribute{
-	INVALIDE_SERVICE    = _ServiceAttribute(0b000000, "Invalide Service"),
+	AREA_CREATABLE      = _ServiceAttribute(0b000000, "Area: Child Area Creatable"),
+	AREA_NOT_CREATABLE  = _ServiceAttribute(0b000001, "Area: Child Area Not Creatable"),
 	RANDOM_RW_AUTH      = _ServiceAttribute(0b001000, "Random Service Read/Write: Authentication Required"),
 	RANDOM_RW_NOAUTH    = _ServiceAttribute(0b001001, "Random Service Read/Write: No Authentication Required"),
 	RANDOM_R_AUTH       = _ServiceAttribute(0b001010, "Random Service Read only : Authentication Required"),
@@ -68,6 +69,7 @@ enum ServiceAttribute: _ServiceAttribute{
 	PARSE_DE_NOAUTH     = _ServiceAttribute(0b010101, "Parse Service  Decrement : No Authentication Required"),
 	PARSE_R_AUTH        = _ServiceAttribute(0b010110, "Parse Service  Read only : Authentication Required"),
 	PARSE_R_NOAUTH      = _ServiceAttribute(0b010111, "Parse Service  Read only : No Authentication Required"),
+	INVALIDE_SERVICE    = _ServiceAttribute(0b111111, "Invalide Service"),
 }
 private struct _ServiceAttribute{
 	this(ubyte attr, string desc){
@@ -104,7 +106,9 @@ unittest{
 
 	assert(attributeValueOf(0b001000) == ServiceAttribute.RANDOM_RW_AUTH);
 	assert(attributeValueOf(0b001100) == ServiceAttribute.CYCLIC_RW_AUTH);
-	assert(attributeValueOf(0b000000) == ServiceAttribute.INVALIDE_SERVICE);
+	assert(attributeValueOf(0b000000) == ServiceAttribute.AREA_CREATABLE);
+	assert(attributeValueOf(0b000001) == ServiceAttribute.AREA_NOT_CREATABLE);
+	assert(attributeValueOf(0b111111) == ServiceAttribute.INVALIDE_SERVICE);
 	assert(attributeValueOf(0b100000) == ServiceAttribute.INVALIDE_SERVICE);
 
 	assert(ServiceAttribute.INVALIDE_SERVICE.desc == "Invalide Service");
