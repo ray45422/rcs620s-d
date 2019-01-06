@@ -50,10 +50,10 @@ ubyte[][] requestService(FeliCa tag, ubyte[][] nodes){
 	}
 	return nodes;
 }
-ubyte[] searchService(FeliCa tag, ushort nodes){
+ubyte[] searchService(FeliCa tag, ushort index){
 	ubyte[] data = 0x0a ~ tag.idm;
-	data ~= nodes >> 8;
-	data ~= nodes & 0xff;
+	data ~= index & 0xff;
+	data ~= index >> 8;
 	auto rcv = tag.command(data);
 	if(rcv.length == 0){
 		return null;
@@ -169,14 +169,11 @@ void main()
 					"no tag detected".writeln;
 					break;
 				}
-				for(ushort i = 0; i < 0b1111111111; ++i){
-					for(ubyte attr = 0; attr < 24; ++attr){
+				for(ushort i = 0; i <= 0b1111111111; ++i){
+					foreach(attr; EnumMembers!ServiceAttribute)
+					{
 						ubyte[] d;
-						auto service = Service(i, attributeValueOf(attr));
-						if(service.serviceAttribute == ServiceAttribute.INVALIDE_SERVICE)
-						{
-							continue;
-						}
+						auto service = Service(i, attr);
 						nodes ~= service.pack;
 					}
 					auto rcv = requestService(lastTag, nodes);
@@ -193,17 +190,27 @@ void main()
 						service.serviceAttribute.desc.write;
 						", keyVer:".write;
 						writef("[%02x, %02x]", keyVer[0], keyVer[1]);
-						if(service.to!string.canFind("AREA")){
-							ushort area = (cast(ushort)nodes[j][1]) << 8 | nodes[j][0];
-							auto areaData = searchService(lastTag, area);
-							if(areaData.length == 4) {
-								writef(", %02x%02x", areaData[0], areaData[1]);
-								writef(", %02x%02x", areaData[2], areaData[3]);
-							}
-						}
 						"]".writeln;
 					}
 					nodes = [];
+				}
+				break;
+			case "searchSrvAll":
+				for(int i = 0; i <= 0xffff; i++)
+				{
+					ushort index = cast(ushort)i;
+					auto rcv = searchService(lastTag, index);
+					if(rcv == [0xff, 0xff])
+					{
+						break;
+					}
+					writef("num:%04x", index);
+					if(rcv.length == 4)
+					{
+						auto srv = Service([rcv[0], rcv[1]]);
+						writef(", %s, ", srv.serviceAttribute.desc);
+					}
+					rcv.print;
 				}
 				break;
 			case "reqSrv":
